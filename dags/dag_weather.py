@@ -1,16 +1,66 @@
-import textwrap
 from datetime import datetime, timedelta
+from airflow.sdk import DAG, task, task_group
+from pipelines.weather import pipe_weather
 
-# Operators; we need this to operate!
-from airflow.providers.standard.operators.bash import BashOperator
 
-# The DAG object; we'll need this to instantiate a DAG
-from airflow.sdk import DAG
+@task
+def retrieve_history_weather_data():
+    return pipe_weather.fetch_history_weather_data("Joinville")
+
+
+@task
+def format_history_weather_data(history_data):
+    return pipe_weather.format_history_weather_data(history_data)
+
+
+@task
+def delete_history_weather_data():
+    pipe_weather.delete_history_weather_data()
+
+
+@task
+def insert_history_weather_data_into_database(formatted_data):
+    pipe_weather.insert_history_weather_data_into_database(formatted_data)
+
+
+@task_group(group_id="process_historical_weather_data")
+def process_historical_weather_data():
+    history_data = retrieve_history_weather_data()
+    formatted_data = format_history_weather_data(history_data)
+    delete_history_weather_data()
+    insert_history_weather_data_into_database(formatted_data)
+
+
+@task
+def retrieve_forecast_weather_data():
+    return pipe_weather.fetch_forecast_weather_data("Joinville")
+
+
+@task
+def format_forecast_weather_data(forecast_data):
+    return pipe_weather.format_forecast_weather_data(forecast_data)
+
+
+@task
+def delete_forecast_weather_data():
+    pipe_weather.delete_forecast_weather_data()
+
+
+@task
+def insert_forecast_weather_data_into_database(formatted_data):
+    pipe_weather.insert_forecast_weather_data_into_database(formatted_data)
+
+
+@task_group(group_id="process_forecast_weather_data")
+def process_forecast_weather_data():
+    forecast_data = retrieve_forecast_weather_data()
+    formatted_data = format_forecast_weather_data(forecast_data)
+    delete_forecast_weather_data()
+    insert_forecast_weather_data_into_database(formatted_data)
+
 
 with DAG(
-    "tutorial",
-    # These args will get passed on to each operator
-    # You can override them on a per-task basis during operator initialization
+    "weather_report",
     default_args={
         "depends_on_past": False,
         "retries": 1,
@@ -28,54 +78,11 @@ with DAG(
         # 'on_skipped_callback': another_function, #or list of functions
         # 'trigger_rule': 'all_success'
     },
-    description="A simple tutorial DAG",
-    schedule=timedelta(days=1),
+    description="A simple weather report DAG",
+    schedule="0 3 * * *",
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=["example"],
+    tags=["weather"],
 ) as dag:
-    # t1, t2 and t3 are examples of tasks created by instantiating operators
-    t1 = BashOperator(
-        task_id="print_date",
-        bash_command="date",
-    )
-
-    t2 = BashOperator(
-        task_id="sleep",
-        depends_on_past=False,
-        bash_command="sleep 5",
-        retries=3,
-    )
-    t1.doc_md = textwrap.dedent(
-        """\
-    #### Task Documentation
-    You can document your task using the attributes `doc_md` (markdown),
-    `doc` (plain text), `doc_rst`, `doc_json`, `doc_yaml` which gets
-    rendered in the UI's Task Instance Details page.
-    ![img](https://imgs.xkcd.com/comics/fixing_problems.png)
-    **Image Credit:** Randall Munroe, [XKCD](https://xkcd.com/license.html)
-    """
-    )
-
-    dag.doc_md = (
-        __doc__  # providing that you have a docstring at the beginning of the DAG; OR
-    )
-    dag.doc_md = """
-    This is a documentation placed anywhere
-    """  # otherwise, type it like this
-    templated_command = textwrap.dedent(
-        """
-    {% for i in range(5) %}
-        echo "{{ ds }}"
-        echo "{{ macros.ds_add(ds, 7)}}"
-    {% endfor %}
-    """
-    )
-
-    t3 = BashOperator(
-        task_id="templated",
-        depends_on_past=False,
-        bash_command=templated_command,
-    )
-
-    t1 >> [t2, t3]
+    process_historical_weather_data()
+    process_forecast_weather_data()
