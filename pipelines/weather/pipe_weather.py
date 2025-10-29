@@ -81,20 +81,20 @@ def yesterday() -> str:
     return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-def tomorrow() -> str:
-    return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+def today() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
 
 
 def fetch_forecast_weather_data(city: str) -> dict:
     response = requests.get(
-        f"{os.getenv('WEATHER_API_URL')}/forecast.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&days=2"
+        f"{os.getenv('WEATHER_API_URL')}/forecast.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&days=2&aqi=no&alerts=no"
     )
     return response.json()
 
 
 def fetch_history_weather_data(city: str, date: str = yesterday()) -> dict:
     response = requests.get(
-        f"{os.getenv('WEATHER_API_URL')}/history.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&dt={date}"
+        f"{os.getenv('WEATHER_API_URL')}/history.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&dt={date}&aqi=no&alerts=no"
     )
 
     return response.json()
@@ -226,10 +226,8 @@ def delete_history_weather_data(date: str = yesterday()) -> None:
 
 
 def delete_forecast_weather_data(
-    date: str = tomorrow(),
+    date: str = today(),
 ) -> None:
-    stmt = delete(Forecast).where(Forecast.date == date, Forecast.is_forecast == 1)
-
     stmt = delete(Forecast).where(
         Forecast.date == date,
         Forecast.is_forecast == 1,
@@ -270,6 +268,60 @@ def insert_forecast_weather_data_into_database(data: pd.DataFrame) -> None:
 
     except Exception as e:
         print(e)
+
+
+def populate_historical_weather_data_by_date_range(
+    city: str, start_date: str, end_date: str
+) -> None:
+    """
+    Popula a base de dados com informações históricas de clima para um range de datas.
+
+    Args:
+        city: Nome da cidade para buscar os dados
+        start_date: Data inicial no formato 'YYYY-MM-DD'
+        end_date: Data final no formato 'YYYY-MM-DD'
+
+    Exemplo:
+        populate_historical_weather_data_by_date_range('Joinville', '2025-10-01', '2025-10-15')
+    """
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+
+    current_date = start
+    total_days = (end - start).days + 1
+    processed_days = 0
+
+    print(
+        f"Iniciando carga histórica de {start_date} até {end_date} ({total_days} dias)"
+    )
+
+    while current_date <= end:
+        date_str = current_date.strftime("%Y-%m-%d")
+
+        try:
+            print(f"Processando data: {date_str}")
+
+            history_data = fetch_history_weather_data(city, date_str)
+
+            formatted_data = format_history_weather_data(history_data)
+
+            delete_history_weather_data(date_str)
+
+            insert_history_weather_data_into_database(formatted_data)
+
+            processed_days += 1
+            print(
+                f"Data {date_str} processada com sucesso ({processed_days}/{total_days})"
+            )
+
+        except Exception as e:
+            print(f"Erro ao processar data {date_str}: {e}")
+
+        current_date += timedelta(days=1)
+
+    print(
+        f"\nCarga histórica concluída! {processed_days}/{total_days} dias processados."
+    )
 
 
 if __name__ == "__main__":
