@@ -64,7 +64,12 @@ def refresh_powerbi_dataset(dataset_id: str, group_id: str) -> None:
 
     print(f"Attempting to refresh dataset {dataset_id} in workspace {group_id}")
     url = f"https://api.powerbi.com/v1.0/myorg/groups/{group_id}/datasets/{dataset_id}/refreshes"
-    response = requests.post(url, headers=headers, json=body, verify=False)
+    response = requests.post(
+        url,
+        headers=headers,
+        json=body,
+        verify=False,
+    )
 
     if response.status_code == 202:
         print("Dataset refresh initiated successfully.")

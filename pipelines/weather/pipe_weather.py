@@ -91,14 +91,16 @@ def today() -> str:
 
 def fetch_forecast_weather_data(city: str) -> dict:
     response = requests.get(
-        f"{os.getenv('WEATHER_API_URL')}/forecast.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&days=2&aqi=no&alerts=no"
+        f"{os.getenv('WEATHER_API_URL')}/forecast.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&days=2&aqi=no&alerts=no",
+        verify=False,
     )
     return response.json()
 
 
 def fetch_history_weather_data(city: str, date: str = yesterday()) -> dict:
     response = requests.get(
-        f"{os.getenv('WEATHER_API_URL')}/history.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&dt={date}&aqi=no&alerts=no"
+        f"{os.getenv('WEATHER_API_URL')}/history.json?key={os.getenv('WEATHER_API_KEY')}&q={city}&dt={date}&aqi=no&alerts=no",
+        verify=False,
     )
 
     return response.json()
