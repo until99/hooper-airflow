@@ -81,5 +81,6 @@ with DAG(
     process_historical_weather_data()
     process_forecast_weather_data()
     refresh_powerbi_dataset(
-        dataset_id="f857d834-69fc-4a0e-ae0f-9754ca2b9fd1", group_id="4573631b-396d-407b-ad18-159686c837de"
+        dataset_id="f857d834-69fc-4a0e-ae0f-9754ca2b9fd1",
+        group_id="4573631b-396d-407b-ad18-159686c837de",
     )
