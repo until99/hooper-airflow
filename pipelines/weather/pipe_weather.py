@@ -81,6 +81,10 @@ def yesterday() -> str:
     return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
+def tomorrow() -> str:
+    return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+
 def today() -> str:
     return datetime.now().strftime("%Y-%m-%d")
 
@@ -214,7 +218,10 @@ def format_forecast_weather_data(data: dict) -> pd.DataFrame:
 
 
 def delete_history_weather_data(date: str = yesterday()) -> None:
-    stmt = delete(Forecast).where(Forecast.date == date, Forecast.is_forecast == 0)
+    stmt = delete(Forecast).where(
+        Forecast.date == date,
+        Forecast.is_forecast == 0,
+    )
 
     try:
         with engine.connect() as conn:
@@ -226,7 +233,7 @@ def delete_history_weather_data(date: str = yesterday()) -> None:
 
 
 def delete_forecast_weather_data(
-    date: str = today(),
+    date: str = tomorrow(),
 ) -> None:
     stmt = delete(Forecast).where(
         Forecast.date == date,
@@ -325,12 +332,24 @@ def populate_historical_weather_data_by_date_range(
 
 
 if __name__ == "__main__":
-    forecast_data = fetch_forecast_weather_data("Joinville")
-    forecast_data = format_forecast_weather_data(forecast_data)
-    delete_forecast_weather_data()
-    insert_forecast_weather_data_into_database(forecast_data)
+    # forecast_data = fetch_forecast_weather_data("Joinville")
+    # forecast_data = format_forecast_weather_data(forecast_data)
+    # delete_forecast_weather_data()
+    # insert_forecast_weather_data_into_database(forecast_data)
 
-    weather_data = fetch_history_weather_data("Joinville")
-    weather_data = format_history_weather_data(weather_data)
-    delete_history_weather_data()
-    insert_history_weather_data_into_database(weather_data)
+    start_date = "2025-10-30"
+    end_date = "2025-10-30"
+    date_list = (
+        pd.date_range(start=start_date, end=end_date).strftime("%Y-%m-%d").tolist()
+    )
+
+    for date in date_list:
+        print(f"Processando data: {date}")
+        weather_data = fetch_history_weather_data("Joinville", date)
+        weather_data = format_history_weather_data(weather_data)
+
+        print(f"{len(weather_data)} registros formatados")
+
+        # delete_history_weather_data(date)
+        insert_history_weather_data_into_database(weather_data)
+        print("Dados inseridos no banco com sucesso!")
